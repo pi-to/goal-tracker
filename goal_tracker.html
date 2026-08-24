@@ -1,0 +1,1371 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>目標トラッカー</title>
+<style>
+  :root{
+    --card:#1e293b; --line:#334155; --fg:#e2e8f0; --mute:#94a3b8;
+    --cyan:#22d3ee; --violet:#a78bfa; --gold:#fbbf24; --green:#34d399; --red:#f87171;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; font-family:"Hiragino Sans","Yu Gothic",sans-serif;
+    background:radial-gradient(circle at top left,#1e2749,#0f172a 55%);
+    color:var(--fg); min-height:100vh; padding:22px 14px 70px;
+  }
+  .wrap{max-width:880px;margin:0 auto}
+  h1{margin:0 0 4px;text-align:center;font-size:1.35rem;
+    background:linear-gradient(90deg,var(--cyan),var(--gold),var(--violet));
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .lead{text-align:center;color:var(--mute);margin:0 0 16px;font-size:.82rem}
+
+  .tabs{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;background:var(--card);
+    border:1px solid var(--line);border-radius:14px;padding:6px;margin-bottom:16px}
+  .tabs button{border:0;background:transparent;color:var(--mute);cursor:pointer;
+    border-radius:10px;padding:11px 2px;font-weight:800;font-size:.76rem}
+  .tabs button small{display:block;font-weight:600;font-size:.58rem;opacity:.75;margin-top:2px}
+  .tabs .on-goal{background:rgba(251,191,36,.22);color:#fde68a}
+  .tabs .on-money{background:rgba(167,139,250,.22);color:#e0e7ff}
+  .tabs .on-kpi{background:rgba(52,211,153,.22);color:#a7f3d0}
+  .tabs .on-rev{background:rgba(34,211,238,.22);color:#a5f3fc}
+  .view{display:none} .view.show{display:block}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+  h2{margin:0 0 12px;font-size:.98rem;display:flex;align-items:center;gap:8px}
+  .dot{width:9px;height:9px;border-radius:50%;flex:none}
+  .hint{margin:-4px 0 12px;color:var(--mute);font-size:.8rem}
+
+  .def{background:#263449;border-left:3px solid var(--gold);border-radius:10px;
+    padding:12px 14px;font-size:.86rem;line-height:1.65}
+  .def b{color:var(--gold)}
+  .flow{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:12px}
+  .flow span{font-size:.72rem;font-weight:700;padding:5px 10px;border-radius:99px;
+    background:rgba(251,191,36,.12);color:#fde68a;border:1px solid rgba(251,191,36,.35)}
+  .flow .a{background:none;border:0;color:var(--mute);padding:5px 2px}
+
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+  .stat{text-align:center;background:#263449;border-radius:10px;padding:10px 4px}
+  .stat b{display:block;font-size:1.15rem} .stat span{font-size:.7rem;color:var(--mute)}
+
+  .g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  @media(max-width:700px){.g2{grid-template-columns:1fr} .g2.keep{grid-template-columns:1fr 1fr}}
+
+  .box{text-align:center}
+  .ring{position:relative;width:130px;height:130px;margin:0 auto 6px}
+  .ring canvas{width:130px;height:130px}
+  .mid{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .mid .p{font-size:1.25rem;font-weight:800;line-height:1.1}
+  .mid .s{font-size:.65rem;color:var(--mute)}
+  .nums{font-size:.82rem} .nums b{font-size:1rem}
+  .rest{margin-top:5px;font-size:.74rem;color:var(--mute)}
+  .chart canvas{width:100%;display:block}
+  .leg{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:8px;font-size:.73rem;color:var(--mute)}
+  .leg span{display:flex;align-items:center;gap:5px}
+  .leg i{width:11px;height:11px;border-radius:3px;display:inline-block}
+  .leg .d{width:16px;height:0;border-top:2px dashed var(--green);border-radius:0}
+
+  .wk{display:grid;grid-template-columns:46px 1fr 1fr 48px;gap:6px;align-items:center}
+  .wk.head{font-size:.68rem;color:var(--mute);padding-bottom:4px}
+  .wk.row{padding:6px 0;border-bottom:1px solid var(--line)}
+  .wk.row:last-child{border-bottom:0}
+  .wk .day{font-weight:800;font-size:.78rem}
+  .wk .day small{display:block;font-weight:600;font-size:.64rem;color:var(--mute)}
+  .wk .day.now{color:var(--green)}
+  .mini{
+    border:1px solid var(--line);background:#263449;color:#64748b;border-radius:9px;
+    padding:9px 0;cursor:pointer;font-weight:800;font-size:.8rem
+  }
+  .mini.on{background:rgba(52,211,153,.18);color:#a7f3d0;border-color:rgba(52,211,153,.5)}
+  #todayEx{min-width:88px}
+  .today{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+  .tog{
+    border:1px solid var(--line);background:#263449;color:var(--mute);border-radius:12px;
+    padding:14px 6px;cursor:pointer;font-weight:800;font-size:.78rem;line-height:1.35;text-align:center
+  }
+  .tog .ic{display:block;font-size:1.25rem;margin-bottom:4px;opacity:.5}
+  .tog.on{background:rgba(52,211,153,.18);color:#a7f3d0;border-color:rgba(52,211,153,.5)}
+  .tog.on .ic{opacity:1}
+  .cell{display:flex;align-items:center;justify-content:center;gap:2px}
+  .cell .sq{width:28px;height:28px;font-size:.9rem}
+  .cell .v{font-size:.7rem;font-weight:800;min-width:44px;text-align:center;line-height:1.15}
+
+  /* ステッパー */
+  .step{display:grid;grid-template-columns:1fr;gap:10px}
+  .stepper{display:flex;align-items:center;justify-content:space-between;
+    background:#263449;border-radius:11px;padding:9px 10px;gap:8px}
+  .stepper .lb{font-size:.8rem;color:var(--mute)}
+  .stepper .ct{display:flex;align-items:center;gap:8px}
+  .stepper .vl{min-width:88px;text-align:right;font-weight:800;font-size:.98rem}
+  .sq{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);
+    background:var(--card);color:var(--fg);font-size:1.05rem;font-weight:800;cursor:pointer}
+
+  .item{background:#263449;border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-top:9px}
+  .top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+  .ttl{font-weight:700;font-size:.9rem}
+  .meta{font-size:.72rem;color:var(--mute);margin-top:3px}
+  .tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+  .tag{font-size:.67rem;font-weight:700;padding:3px 8px;border-radius:99px;border:1px solid transparent}
+  .t設計{background:rgba(34,211,238,.12);color:#67e8f9;border-color:rgba(34,211,238,.35)}
+  .t実装{background:rgba(167,139,250,.12);color:#c4b5fd;border-color:rgba(167,139,250,.35)}
+  .t検証{background:rgba(52,211,153,.12);color:#6ee7b7;border-color:rgba(52,211,153,.35)}
+  .t改善{background:rgba(251,191,36,.12);color:#fde68a;border-color:rgba(251,191,36,.35)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+  .chip{border:1px solid var(--line);background:#263449;color:var(--mute);border-radius:99px;
+    padding:8px 13px;font-size:.78rem;font-weight:700;cursor:pointer}
+  .chip.on{background:rgba(251,191,36,.18);color:#fde68a;border-color:rgba(251,191,36,.45)}
+
+  input{width:100%;background:#263449;border:1px solid var(--line);color:var(--fg);
+    border-radius:10px;padding:12px;font-size:.92rem}
+  .x{background:rgba(248,113,113,.14);color:var(--red);border:1px solid rgba(248,113,113,.35);
+    border-radius:8px;width:30px;height:30px;cursor:pointer;flex:none}
+  .btn{width:100%;margin-top:11px;border:0;border-radius:11px;padding:13px;font-weight:800;
+    font-size:.9rem;cursor:pointer;background:linear-gradient(90deg,var(--cyan),var(--violet));color:#0b1120}
+  .btn.g{background:linear-gradient(90deg,#fbbf24,#f59e0b)}
+  .pace{display:grid;grid-template-columns:1fr 1fr;gap:10px;background:#263449;
+    border-radius:10px;padding:11px;margin-top:11px}
+  .pace div{text-align:center;font-size:.73rem;color:var(--mute)}
+  .pace b{display:block;color:var(--fg);font-size:.98rem;margin-top:3px}
+  .empty,.empty{text-align:center;color:var(--mute);padding:14px;font-size:.83rem}
+  footer{text-align:center;color:var(--mute);font-size:.72rem;margin-top:22px}
+
+  .cloud{display:flex;align-items:center;justify-content:space-between;gap:8px;
+    background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:14px}
+  .cloud .who{display:flex;align-items:center;gap:8px;min-width:0}
+  .cloud img{width:28px;height:28px;border-radius:50%;background:#334155}
+  .cloud .nm{font-size:.8rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cloud .st{font-size:.68rem;color:var(--mute)}
+  .cloud .acts{display:flex;gap:6px;flex:none}
+  .btn.sm{width:auto;margin:0;padding:8px 12px;font-size:.75rem}
+  .btn.ghost{background:#263449;color:var(--fg);border:1px solid var(--line)}
+  .modal{position:fixed;inset:0;background:rgba(2,6,23,.72);display:none;align-items:flex-end;justify-content:center;z-index:50;padding:14px}
+  .modal.show{display:flex}
+  .sheet{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;max-width:560px;width:100%;max-height:88vh;overflow:auto}
+  .sheet ol{margin:8px 0 12px;padding-left:18px;color:var(--mute);font-size:.8rem;line-height:1.55}
+  .sheet textarea{min-height:120px;font-family:ui-monospace,monospace;font-size:.75rem}
+  .sheet pre{background:#0f172a;border-radius:8px;padding:10px;font-size:.68rem;overflow:auto;color:#cbd5e1;white-space:pre-wrap}
+  .sheet a{color:var(--cyan)}
+  .sheet code{background:#0f172a;border-radius:6px;padding:2px 6px;font-size:.7rem;color:#cbd5e1;word-break:break-all}
+
+  .subtabs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:12px}
+  .subtabs button{border:1px solid var(--line);background:#263449;color:var(--mute);border-radius:10px;
+    padding:10px;font-weight:800;cursor:pointer}
+  .subtabs button.on{background:rgba(34,211,238,.18);color:#a5f3fc;border-color:rgba(34,211,238,.45)}
+  .revnav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+  .revnav .lb{text-align:center;font-weight:800;font-size:.92rem;line-height:1.3}
+  .revnav .lb small{display:block;font-weight:600;font-size:.7rem;color:var(--mute)}
+  .mood{display:flex;gap:6px;justify-content:space-between}
+  .mood button{flex:1;border:1px solid var(--line);background:#263449;border-radius:10px;
+    padding:10px 0;font-size:1.15rem;cursor:pointer;opacity:.45}
+  .mood button.on{opacity:1;background:rgba(34,211,238,.16);border-color:rgba(34,211,238,.45)}
+  .card textarea{width:100%;min-height:78px;background:#263449;border:1px solid var(--line);
+    color:var(--fg);border-radius:10px;padding:10px;font-size:.88rem;font-family:inherit;resize:vertical}
+  .delta,.delta{font-size:.72rem;margin-top:4px}
+  .delta.up,.delta.up{color:var(--green)}
+  .delta.dn,.delta.dn{color:var(--red)}
+  .delta.flat,.delta.flat{color:var(--mute)}
+  .revlist{margin-top:8px}
+  .revlist .item{margin-top:6px}
+
+  .calhead{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px}
+  .calhead span{text-align:center;font-size:.68rem;color:var(--mute);font-weight:700;padding:4px 0}
+  .cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+  .cal .cell{
+    min-height:62px;border:1px solid var(--line);border-radius:10px;background:#263449;
+    padding:4px 2px 6px;cursor:pointer;text-align:center;color:inherit;font:inherit
+  }
+  .cal .cell.out{opacity:.38}
+  .cal .cell.today{border-color:var(--cyan)}
+  .cal .cell.sel{background:rgba(34,211,238,.14);border-color:rgba(34,211,238,.7)}
+  .cal .n{font-size:.72rem;font-weight:800;line-height:1.2}
+  .cal .dots{display:flex;justify-content:center;gap:3px;margin-top:5px}
+  .cal .dots i{width:7px;height:7px;border-radius:50%;background:#475569;display:inline-block}
+  .cal .dots i.w{background:var(--cyan)}
+  .cal .dots i.s{background:var(--violet)}
+  .cal .dots i.e{background:var(--green)}
+  .cal .sn{font-size:.6rem;color:var(--gold);font-weight:700;margin-top:3px;min-height:.8em}
+  .calday .tog{padding:12px 4px;font-size:.74rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>目標トラッカー</h1>
+  <p class="lead">ゴール：平凡から PL になる</p>
+
+  <div class="cloud" id="cloudBar">
+    <div class="who">
+      <img id="cloudAv" alt="" width="28" height="28">
+      <div>
+        <div class="nm" id="cloudName">未ログイン</div>
+        <div class="st" id="cloudSt">この端末のみに保存中</div>
+      </div>
+    </div>
+    <div class="acts">
+      <button class="btn sm ghost" type="button" id="btnSetup">設定</button>
+      <button class="btn sm ghost" type="button" id="btnSync" style="display:none">同期</button>
+      <button class="btn sm" type="button" id="btnLogin">Googleでログイン</button>
+    </div>
+  </div>
+
+  <div class="modal" id="setupModal">
+    <div class="sheet">
+      <h2>クラウド同期の設定（管理者・1回だけ）</h2>
+      <p class="hint">保存先は Firebase（Google Cloud）の無料枠です。誰でも自分の Google アカウントでログインでき、データはアカウントごとに分かれます。プロジェクトIDや API キーは、この画面に貼るだけで、ソースコードへ直書きしないでください。</p>
+      <ol>
+        <li><a href="https://console.firebase.google.com/?hl=ja" target="_blank" rel="noopener">Firebase Console</a> でプロジェクトを作る（Blaze 課金は不要・Spark 無料でOK）</li>
+        <li>Authentication → Sign-in method → <b>Google</b> を有効にする</li>
+        <li>Authentication → Settings → Authorized domains に <code id="originHost"></code> を追加</li>
+        <li>Build → Firestore Database を作成（本番モードでOK）</li>
+        <li>歯車 → プロジェクトの設定 → マイアプリ → ウェブアプリを追加し、firebaseConfig をコピー</li>
+        <li>下に貼り付けて保存。Firestore の Rules はリポジトリの <code>firestore.rules</code> と同じ内容にする</li>
+      </ol>
+      <label>firebaseConfig（貼り付け）</label>
+      <textarea id="fbConfigText" placeholder='{"apiKey":"...","authDomain":"YOUR_PROJECT.firebaseapp.com","projectId":"YOUR_PROJECT","storageBucket":"YOUR_PROJECT.appspot.com","messagingSenderId":"...","appId":"..."}'></textarea>
+      <p class="hint" style="margin-top:10px">Firestore ルール（コピーして Rules に貼る）。各ユーザーは自分のデータだけ読めます。</p>
+      <pre>rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}</pre>
+      <p class="hint">保存すると、このサイトを開いた他の人も設定なしで「Googleでログイン」できます。今のページのオリジンは <code id="originNow"></code> です。</p>
+      <button class="btn g" type="button" id="btnSaveCfg">保存してログイン</button>
+      <button class="btn ghost" type="button" id="btnCloseSetup">閉じる</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button id="tabGoal" type="button">ゴール<small>平凡 → PL</small></button>
+    <button id="tabMoney" type="button">資産・年収<small>数字</small></button>
+    <button id="tabKpi" type="button">習慣KPI<small>早起き・睡眠・運動</small></button>
+    <button id="tabRev" type="button">振り返り<small>週次・月次・カレンダー</small></button>
+  </div>
+
+  <!-- ゴール -->
+  <section class="view" id="viewGoal">
+    <div class="card">
+      <h2><i class="dot" style="background:var(--gold)"></i>ゴール：平凡から PL になる</h2>
+      <div class="def">その手段が<b>FDE</b>。顧客に深く入り込み、業務フローを定義してAI実装を担い、<b>設計→実装→検証→改善</b>を高速に回す。解決の積み上げが<b>PLへの実績</b>になる。</div>
+      <div class="flow"><span>平凡</span><span class="a">→</span><span>解決を積む</span><span class="a">→</span><span>PL</span></div>
+      <div class="stats">
+        <div class="stat"><b id="solveCount">0</b><span>解決した件数</span></div>
+        <div class="stat"><b id="phaseTop">-</b><span>多いフェーズ</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><i class="dot" style="background:var(--gold)"></i>解決を記録</h2>
+      <p class="hint">タイトルだけでOK。日付は今日で入ります。</p>
+      <input id="solveTitle" placeholder="例：請求確認をAIで半自動化">
+      <div class="chips" id="phaseChips">
+        <button class="chip on" type="button" data-p="設計">設計</button>
+        <button class="chip on" type="button" data-p="実装">実装</button>
+        <button class="chip" type="button" data-p="検証">検証</button>
+        <button class="chip" type="button" data-p="改善">改善</button>
+      </div>
+      <button class="btn g" id="addSolve" type="button">＋ 記録する</button>
+      <div id="solveList"></div>
+    </div>
+
+    <div class="g2">
+      <div class="card box">
+        <h2><i class="dot" style="background:var(--gold)"></i>フェーズ内訳</h2>
+        <div class="ring"><canvas id="phaseDonut"></canvas><div class="mid"><div class="p" id="phaseTotal">0</div><div class="s">件</div></div></div>
+        <div class="leg" id="phaseLegend"></div>
+      </div>
+      <div class="card box">
+        <h2><i class="dot" style="background:var(--violet)"></i>月ごとの件数</h2>
+        <div class="chart"><canvas id="solveBar"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 資産・年収 -->
+  <section class="view" id="viewMoney">
+    <div class="card">
+      <h2>目標（タップで調整）</h2>
+      <div class="step">
+        <div class="stepper">
+          <span class="lb">目標資産</span>
+          <span class="ct"><button class="sq" type="button" data-k="targetAsset" data-d="-500">−</button>
+            <span class="vl" id="vAsset">0</span>
+            <button class="sq" type="button" data-k="targetAsset" data-d="500">＋</button></span>
+        </div>
+        <div class="stepper">
+          <span class="lb">目標年収</span>
+          <span class="ct"><button class="sq" type="button" data-k="targetIncome" data-d="-50">−</button>
+            <span class="vl" id="vIncome">0</span>
+            <button class="sq" type="button" data-k="targetIncome" data-d="50">＋</button></span>
+        </div>
+        <div class="stepper">
+          <span class="lb">達成目標年</span>
+          <span class="ct"><button class="sq" type="button" data-k="targetYear" data-d="-1">−</button>
+            <span class="vl" id="vYear">0</span>
+            <button class="sq" type="button" data-k="targetYear" data-d="1">＋</button></span>
+        </div>
+      </div>
+      <div class="pace">
+        <div>目標達成まで<b id="paceYears">-</b></div>
+        <div>資産の年間必要額<b id="paceAsset">-</b></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>今の実績（タップで調整）</h2>
+      <div class="step">
+        <div class="stepper">
+          <span class="lb">いまの資産</span>
+          <span class="ct"><button class="sq" type="button" data-c="asset" data-d="-100">−</button>
+            <span class="vl" id="vNowAsset">0</span>
+            <button class="sq" type="button" data-c="asset" data-d="100">＋</button></span>
+        </div>
+        <div class="stepper">
+          <span class="lb">いまの年収</span>
+          <span class="ct"><button class="sq" type="button" data-c="income" data-d="-10">−</button>
+            <span class="vl" id="vNowIncome">0</span>
+            <button class="sq" type="button" data-c="income" data-d="10">＋</button></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="g2">
+      <div class="card box">
+        <h2><i class="dot" style="background:var(--cyan)"></i>資産の達成率</h2>
+        <div class="ring"><canvas id="assetDonut"></canvas><div class="mid"><div class="p" id="assetPct">0%</div><div class="s">達成率</div></div></div>
+        <div class="nums"><b id="assetCur">0</b> / <span id="assetTgt">0</span> 万円</div>
+        <div class="rest" id="assetRest">-</div>
+      </div>
+      <div class="card box">
+        <h2><i class="dot" style="background:var(--violet)"></i>年収の達成率</h2>
+        <div class="ring"><canvas id="incomeDonut"></canvas><div class="mid"><div class="p" id="incomePct">0%</div><div class="s">達成率</div></div></div>
+        <div class="nums"><b id="incomeCur">0</b> / <span id="incomeTgt">0</span> 万円</div>
+        <div class="rest" id="incomeRest">-</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><i class="dot" style="background:var(--cyan)"></i>資産の推移</h2>
+      <div class="chart"><canvas id="assetBar"></canvas></div>
+      <div class="leg"><span><i style="background:var(--cyan)"></i>実績</span><span><i class="d"></i>目標</span></div>
+    </div>
+    <div class="card">
+      <h2><i class="dot" style="background:var(--violet)"></i>年収の推移</h2>
+      <div class="chart"><canvas id="incomeBar"></canvas></div>
+      <div class="leg"><span><i style="background:var(--violet)"></i>実績</span><span><i class="d"></i>目標</span></div>
+    </div>
+  </section>
+
+  <!-- 習慣KPI -->
+  <section class="view" id="viewKpi">
+    <div class="card">
+      <h2><i class="dot" style="background:var(--green)"></i>今日できた？（タップ）</h2>
+      <p class="hint">7時より前に起きたか ／ 睡眠7時間以上 ／ 朝に運動したか</p>
+      <div class="today">
+        <button class="tog" type="button" data-t="wake"><span class="ic">🌅</span>7時より前</button>
+        <button class="tog" type="button" data-t="sleep"><span class="ic">😴</span>7時間以上</button>
+        <button class="tog" type="button" data-t="ex"><span class="ic">🏃</span>朝に運動</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>今週の達成率</h2>
+      <p class="hint" id="kpiWeek"></p>
+      <div class="g3">
+        <div class="box">
+          <div class="ring"><canvas id="wakeDonut"></canvas>          <div class="mid"><div class="p" id="wakePct">0%</div><div class="s">7時より前</div></div></div>
+          <div class="nums"><b id="wakeCur">0</b> / <span id="wakeTgt">7</span> 日</div>
+        </div>
+        <div class="box">
+          <div class="ring"><canvas id="sleepDonut"></canvas>          <div class="mid"><div class="p" id="sleepPct">0%</div><div class="s">7時間以上</div></div></div>
+          <div class="nums"><b id="sleepCur">0</b> / <span id="sleepTgt">7</span> 日</div>
+        </div>
+        <div class="box">
+          <div class="ring"><canvas id="exDonut"></canvas>          <div class="mid"><div class="p" id="exPct">0%</div><div class="s">朝に運動</div></div></div>
+          <div class="nums"><b id="exCur">0</b> / <span id="exTgt">7</span> 日</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>今週の記録（タップ）</h2>
+      <div class="wk head"><div>曜日</div><div>起床</div><div>睡眠</div><div>朝運動</div></div>
+      <div id="kpiDays"></div>
+    </div>
+  </section>
+
+  <!-- 振り返り -->
+  <section class="view" id="viewRev">
+    <div class="card">
+      <div class="subtabs">
+        <button type="button" id="subWeek">週次</button>
+        <button type="button" id="subMonth">月次</button>
+        <button type="button" id="subCal">カレンダー</button>
+      </div>
+      <div class="revnav">
+        <button class="sq" type="button" id="revPrev">‹</button>
+        <div class="lb" id="revLabel">-</div>
+        <button class="sq" type="button" id="revFwd">›</button>
+      </div>
+      <p class="hint" id="revHint">記録したKPIと解決から、自動で数字を出します。下に一言残せます。</p>
+    </div>
+
+    <div id="revCalPane" style="display:none">
+      <div class="card">
+        <div class="calhead"><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span><span>日</span></div>
+        <div class="cal" id="calGrid"></div>
+        <div class="leg" style="margin-top:10px">
+          <span><i style="background:var(--cyan);border-radius:50%"></i>早起き</span>
+          <span><i style="background:var(--violet);border-radius:50%"></i>睡眠</span>
+          <span><i style="background:var(--green);border-radius:50%"></i>朝運動</span>
+          <span style="color:var(--gold)">数字＝解決件数</span>
+        </div>
+      </div>
+      <div class="card calday">
+        <h2 id="calDayTitle">この日</h2>
+        <p class="hint">マスをタップして日を選び、できたかを切り替えられます。</p>
+        <div class="today" id="calTogs">
+          <button class="tog" type="button" data-t="wake"><span class="ic">🌅</span>7時より前</button>
+          <button class="tog" type="button" data-t="sleep"><span class="ic">😴</span>7時間以上</button>
+          <button class="tog" type="button" data-t="ex"><span class="ic">🏃</span>朝に運動</button>
+        </div>
+        <h2 style="margin-top:16px">この日の解決</h2>
+        <div id="calSolves" class="revlist"></div>
+      </div>
+    </div>
+
+    <div id="revStatsPane">
+    <div class="g2 keep">
+      <div class="card box">
+        <h2><i class="dot" style="background:var(--cyan)"></i>早起き</h2>
+        <div class="ring"><canvas id="revWakeDonut"></canvas><div class="mid"><div class="p" id="revWakePct">0%</div><div class="s">達成</div></div></div>
+        <div class="nums"><b id="revWakeCur">0</b> / <span id="revWakeTgt">0</span> 日</div>
+        <div class="delta" id="revWakeDelta"></div>
+      </div>
+      <div class="card box">
+        <h2><i class="dot" style="background:var(--violet)"></i>睡眠</h2>
+        <div class="ring"><canvas id="revSleepDonut"></canvas><div class="mid"><div class="p" id="revSleepPct">0%</div><div class="s">7時間以上</div></div></div>
+        <div class="nums"><b id="revSleepCur">0</b> / <span id="revSleepTgt">0</span> 日</div>
+        <div class="delta" id="revSleepDelta"></div>
+      </div>
+      <div class="card box">
+        <h2><i class="dot" style="background:var(--green)"></i>朝運動</h2>
+        <div class="ring"><canvas id="revExDonut"></canvas><div class="mid"><div class="p" id="revExPct">0%</div><div class="s">できた日</div></div></div>
+        <div class="nums"><b id="revExCur">0</b> / <span id="revExTgt">0</span> 日</div>
+        <div class="delta" id="revExDelta"></div>
+      </div>
+      <div class="card box">
+        <h2><i class="dot" style="background:var(--gold)"></i>解決</h2>
+        <div class="ring"><canvas id="revSolveDonut"></canvas><div class="mid"><div class="p" id="revSolveN">0</div><div class="s">件</div></div></div>
+        <div class="nums" id="revSolvePhases">-</div>
+        <div class="delta" id="revSolveDelta"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>期間の推移</h2>
+      <div class="chart"><canvas id="revBar"></canvas></div>
+    </div>
+
+    <div class="card">
+      <h2>この期間の解決</h2>
+      <div id="revSolves" class="revlist"></div>
+    </div>
+
+    <div class="card">
+      <h2>いまの気分</h2>
+      <div class="mood" id="revMood">
+        <button type="button" data-m="1">😞</button>
+        <button type="button" data-m="2">😐</button>
+        <button type="button" data-m="3">🙂</button>
+        <button type="button" data-m="4">😊</button>
+        <button type="button" data-m="5">🤩</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>よかったこと</h2>
+      <textarea id="revGood" placeholder="うまくいったこと、続けたいこと"></textarea>
+    </div>
+    <div class="card">
+      <h2>うまくいかなかったこと</h2>
+      <textarea id="revHard" placeholder="詰まったこと、減らしたいこと"></textarea>
+    </div>
+    <div class="card">
+      <h2 id="revNextTitle">次にやること</h2>
+      <p class="hint">タップでフォーカスを選べます。複数可。</p>
+      <div class="chips" id="revFocus">
+        <button class="chip" type="button" data-f="早起き">早起き</button>
+        <button class="chip" type="button" data-f="睡眠">睡眠</button>
+        <button class="chip" type="button" data-f="運動">運動</button>
+        <button class="chip" type="button" data-f="設計">設計</button>
+        <button class="chip" type="button" data-f="実装">実装</button>
+        <button class="chip" type="button" data-f="検証">検証</button>
+        <button class="chip" type="button" data-f="改善">改善</button>
+        <button class="chip" type="button" data-f="資産">資産</button>
+      </div>
+      <textarea id="revNext" placeholder="次の期間でやりたいこと"></textarea>
+    </div>
+    </div>
+  </section>
+
+  <footer>ログイン前はこの端末のみ。ログイン後は無料のクラウド（Firebase）に、Googleアカウントごとに保存されます。</footer>
+</div>
+<script>
+(function(){
+  const KEY='goalTracker_v5';
+  const TABK='goalTracker_tab_v2';
+  const PHASES=['設計','実装','検証','改善'];
+  const COL={'設計':'#22d3ee','実装':'#a78bfa','検証':'#34d399','改善':'#fbbf24'};
+  const DAYS=['月','火','水','木','金','土','日'];
+  const Y=new Date().getFullYear();
+  const WAKE_BEFORE=7*60;  // 7時より前
+  const SLEEP_NEED=7*60;   // 7時間以上
+
+  let data=load();
+  let tab=localStorage.getItem(TABK)||'kpi';
+  let picked=['設計','実装'];
+
+  function load(){
+    try{ const r=localStorage.getItem(KEY); if(r) return fill(JSON.parse(r)); }catch(e){}
+    const d=fill({});
+    ['goalTracker_v4','goalTracker_v3'].forEach(k=>{
+      try{ const old=localStorage.getItem(k); if(old) Object.assign(d, convert(JSON.parse(old), d)); }catch(e){}
+    });
+    return fill(d);
+  }
+  function fill(d){
+    d.targetAsset=d.targetAsset??5000;
+    d.targetIncome=d.targetIncome??1000;
+    d.targetYear=d.targetYear??Y+5;
+    d.records=d.records||[{year:Y-2,asset:800,income:600},{year:Y-1,asset:1300,income:650},{year:Y,asset:1900,income:720}];
+    d.solves=d.solves||[];
+    d.kpiGoals=normGoals(d.kpiGoals);
+    d.kpiDays=normDays(d.kpiDays||{}, d.kpiGoals);
+    d.reviews=d.reviews&&typeof d.reviews==='object'?d.reviews:{};
+    d.reviews.week=d.reviews.week||{};
+    d.reviews.month=d.reviews.month||{};
+    return d;
+  }
+  function snap30(m){ return Math.round(Number(m)/30)*30; }
+  function wrapClock(m){ m=((snap30(m)%1440)+1440)%1440; return m; }
+  function clampSleep(m){ return Math.min(16*60, Math.max(0, snap30(m))); }
+  function fmtClock(m){ if(m==null||m==='') return '—'; m=wrapClock(m); return pad(Math.floor(m/60))+':'+pad(m%60); }
+  function fmtDur(m){
+    if(m==null||m==='') return '—';
+    m=clampSleep(m); const h=Math.floor(m/60), mm=m%60;
+    return mm? h+'時間'+mm+'分' : h+'時間';
+  }
+  function parseTime(v){
+    if(v==null||v==='') return null;
+    if(typeof v==='number') return v<=24? snap30(v*60): snap30(v);
+    if(typeof v==='string' && v.indexOf(':')>=0){ const n=toMin(v); return n==null?null:snap30(n); }
+    const n=Number(v); return isNaN(n)?null:parseTime(n);
+  }
+  function normGoals(g){
+    g=g||{};
+    let wake=g.wakeMin;
+    if(wake==null){
+      if(typeof g.wake==='string') wake=parseTime(g.wake);
+      else wake=6*60;
+    }
+    let sleep=g.sleepMin;
+    if(sleep==null){
+      if(typeof g.sleep==='number' && g.sleep>=3 && g.sleep<=14) sleep=snap30(g.sleep*60);
+      else sleep=7*60;
+    }
+    return {wakeMin:7*60, sleepMin:7*60, ex:7};
+  }
+  function normDays(days, g){
+    const out={};
+    Object.entries(days).forEach(([k,v])=>{
+      if(!v||typeof v!=='object') return;
+      const rec={wake:false, sleep:false, ex: !!(v.ex||v.exercise)};
+      if(typeof v.wake==='boolean') rec.wake=v.wake;
+      else if(typeof v.wakeMin==='number') rec.wake=v.wakeMin<WAKE_BEFORE;
+      else if(typeof v.wake==='string'){ const n=parseTime(v.wake); rec.wake=n!=null&&n<WAKE_BEFORE; }
+      if(typeof v.sleep==='boolean') rec.sleep=v.sleep;
+      else if(typeof v.sleepMin==='number') rec.sleep=v.sleepMin>=SLEEP_NEED;
+      else if(typeof v.sleep==='number' && v.sleep>=1 && v.sleep<=16) rec.sleep=v.sleep*60>=SLEEP_NEED;
+      out[k]=rec;
+    });
+    return out;
+  }
+  function convert(old, d){
+    d.targetAsset=old.targetAsset??d.targetAsset;
+    d.targetIncome=old.targetIncome??d.targetIncome;
+    d.targetYear=old.targetYear??d.targetYear;
+    if(old.records&&old.records.length) d.records=old.records;
+    if(old.solves) d.solves=old.solves;
+    d.kpiGoals=normGoals(old.kpiGoals);
+    d.kpiDays=normDays(old.kpiDays||{}, d.kpiGoals);
+    if(old.reviews) d.reviews=old.reviews;
+    return d;
+  }
+  function save(){
+    data.updatedAt=Date.now();
+    localStorage.setItem(KEY, JSON.stringify(data));
+    pushCloud();
+  }
+  function uid(){ return 's'+Date.now().toString(36)+Math.random().toString(36).slice(2,5); }
+  function pad(n){ return String(n).padStart(2,'0'); }
+  function iso(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+  function today(){ return iso(new Date()); }
+  function fmt(n){ return Math.round(Number(n)||0).toLocaleString('ja-JP'); }
+  function esc(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function toMin(t){ if(!t) return null; const a=String(t).split(':').map(Number); if(isNaN(a[0])) return null; return a[0]*60+(a[1]||0); }
+  function week(){
+    const x=new Date(); x.setHours(0,0,0,0);
+    const mon=new Date(x); mon.setDate(x.getDate()-((x.getDay()+6)%7));
+    return Array.from({length:7},(_,i)=>{ const d=new Date(mon); d.setDate(mon.getDate()+i); return d; });
+  }
+  function recs(){ return [...data.records].sort((a,b)=>a.year-b.year); }
+  function thisRec(){
+    let r=data.records.find(x=>x.year===Y);
+    if(!r){ const p=recs().slice(-1)[0]||{asset:0,income:0}; r={year:Y,asset:p.asset,income:p.income}; data.records.push(r); }
+    return r;
+  }
+  function sols(){ return [...data.solves].sort((a,b)=>(b.date||'').localeCompare(a.date||'')); }
+
+  function show(name){
+    tab=name; localStorage.setItem(TABK,name);
+    document.getElementById('tabGoal').className=name==='goal'?'on-goal':'';
+    document.getElementById('tabMoney').className=name==='money'?'on-money':'';
+    document.getElementById('tabKpi').className=name==='kpi'?'on-kpi':'';
+    document.getElementById('tabRev').className=name==='rev'?'on-rev':'';
+    document.getElementById('viewGoal').classList.toggle('show',name==='goal');
+    document.getElementById('viewMoney').classList.toggle('show',name==='money');
+    document.getElementById('viewKpi').classList.toggle('show',name==='kpi');
+    document.getElementById('viewRev').classList.toggle('show',name==='rev');
+    requestAnimationFrame(render);
+  }
+  document.getElementById('tabGoal').onclick=()=>show('goal');
+  document.getElementById('tabMoney').onclick=()=>show('money');
+  document.getElementById('tabKpi').onclick=()=>show('kpi');
+  document.getElementById('tabRev').onclick=()=>show('rev');
+
+  function donut(c,pct,color){
+    const s=130, dpr=window.devicePixelRatio||1;
+    c.width=s*dpr; c.height=s*dpr;
+    const ctx=c.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,s,s);
+    const cx=65,cy=65,r=51,lw=13;
+    ctx.lineCap='round';
+    ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.strokeStyle='#334155'; ctx.lineWidth=lw; ctx.stroke();
+    const p=Math.max(0,Math.min(100,pct));
+    if(p>0){ ctx.beginPath(); ctx.arc(cx,cy,r,-Math.PI/2,-Math.PI/2+Math.PI*2*p/100); ctx.strokeStyle=color; ctx.lineWidth=lw; ctx.stroke(); }
+  }
+  function pie(c,counts){
+    const s=130, dpr=window.devicePixelRatio||1;
+    c.width=s*dpr; c.height=s*dpr;
+    const ctx=c.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,s,s);
+    const cx=65,cy=65,r=57,ir=36;
+    const tot=PHASES.reduce((n,p)=>n+(counts[p]||0),0);
+    if(!tot){
+      ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fillStyle='#334155'; ctx.fill();
+      ctx.beginPath(); ctx.arc(cx,cy,ir,0,Math.PI*2); ctx.fillStyle='#1e293b'; ctx.fill(); return;
+    }
+    let a=-Math.PI/2;
+    PHASES.forEach(p=>{
+      const v=counts[p]||0; if(!v) return;
+      const ang=v/tot*Math.PI*2;
+      ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,a,a+ang); ctx.closePath(); ctx.fillStyle=COL[p]; ctx.fill(); a+=ang;
+    });
+    ctx.beginPath(); ctx.arc(cx,cy,ir,0,Math.PI*2); ctx.fillStyle='#1e293b'; ctx.fill();
+  }
+  function bar(c,items,val,lab,tgt,color){
+    const w=Math.max(250,c.parentElement.clientWidth||250), h=200, dpr=window.devicePixelRatio||1;
+    c.width=w*dpr; c.height=h*dpr; c.style.height=h+'px';
+    const ctx=c.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,w,h);
+    const L=40,R=10,T=18,B=26,pw=w-L-R,ph=h-T-B;
+    const vs=items.map(val), mx=Math.max(tgt||0,...vs,1)*1.12, yOf=v=>T+ph-(v/mx)*ph;
+    ctx.font='10px sans-serif'; ctx.fillStyle='#94a3b8'; ctx.textAlign='right'; ctx.textBaseline='middle';
+    for(let i=0;i<=4;i++){ const v=mx/4*i,y=yOf(v);
+      ctx.strokeStyle='rgba(148,163,184,.14)'; ctx.beginPath(); ctx.moveTo(L,y); ctx.lineTo(w-R,y); ctx.stroke();
+      ctx.fillText(fmt(v),L-6,y); }
+    if(!items.length){ ctx.textAlign='center'; ctx.fillText('データなし',w/2,h/2); return; }
+    const sl=pw/items.length, bw=Math.min(42,sl*.55);
+    items.forEach((it,i)=>{
+      const v=val(it), cx=L+sl*(i+.5), x=cx-bw/2, y=yOf(v), rd=Math.min(6,bw/2);
+      const g=ctx.createLinearGradient(0,y,0,T+ph); g.addColorStop(0,color); g.addColorStop(1,'rgba(148,163,184,.18)');
+      ctx.fillStyle=g; ctx.beginPath();
+      ctx.moveTo(x,T+ph); ctx.lineTo(x,y+rd); ctx.quadraticCurveTo(x,y,x+rd,y);
+      ctx.lineTo(x+bw-rd,y); ctx.quadraticCurveTo(x+bw,y,x+bw,y+rd); ctx.lineTo(x+bw,T+ph); ctx.closePath(); ctx.fill();
+      if(items.length<=10&&v>0){ ctx.fillStyle='#e2e8f0'; ctx.font='bold 10px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='bottom'; ctx.fillText(fmt(v),cx,y-4); }
+      ctx.fillStyle='#94a3b8'; ctx.font='10px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='top'; ctx.fillText(lab(it),cx,T+ph+8);
+    });
+    if(tgt>0&&tgt<=mx){
+      const y=yOf(tgt);
+      ctx.strokeStyle='#34d399'; ctx.setLineDash([5,4]); ctx.beginPath(); ctx.moveTo(L,y); ctx.lineTo(w-R,y); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle='#34d399'; ctx.font='bold 10px sans-serif'; ctx.textAlign='left'; ctx.textBaseline='bottom'; ctx.fillText('目標 '+fmt(tgt),L+4,y-3);
+    }
+  }
+
+  function render(){
+    if(tab==='goal') renderGoal();
+    else if(tab==='money') renderMoney();
+    else if(tab==='rev') renderRev();
+    else renderKpi();
+  }
+
+  /* ---- 習慣KPI（タップ） ---- */
+  function metWake(r){ return !!(r && r.wake); }
+  function metSleep(r){ return !!(r && r.sleep); }
+  function toggleDay(id, field){
+    const r=data.kpiDays[id]=data.kpiDays[id]||{};
+    r[field]=!r[field];
+    save();
+    if(tab==='rev') renderRev();
+    else renderKpi();
+  }
+  function renderKpi(){
+    const days=week(), t=today();
+    document.getElementById('kpiWeek').textContent=
+      (days[0].getMonth()+1)+'/'+days[0].getDate()+' 〜 '+(days[6].getMonth()+1)+'/'+days[6].getDate();
+
+    const rec=data.kpiDays[t]||{};
+    document.querySelectorAll('#viewKpi .today .tog').forEach(b=>{
+      b.classList.toggle('on', !!rec[b.dataset.t]);
+      b.onclick=()=>toggleDay(t, b.dataset.t);
+    });
+
+    const box=document.getElementById('kpiDays');
+    box.innerHTML=days.map((d,i)=>{
+      const id=iso(d), r=data.kpiDays[id]||{};
+      return '<div class="wk row"><div class="day'+(id===t?' now':'')+'">'+DAYS[i]+
+        '<small>'+(d.getMonth()+1)+'/'+d.getDate()+'</small></div>'+
+        ['wake','sleep','ex'].map(k=>'<button type="button" class="mini'+(r[k]?' on':'')+'" data-id="'+id+'" data-f="'+k+'">'+(r[k]?'○':'—')+'</button>').join('')+
+        '</div>';
+    }).join('');
+    box.querySelectorAll('[data-f]').forEach(b=>{
+      b.onclick=()=>toggleDay(b.dataset.id, b.dataset.f);
+    });
+
+    let w=0,s=0,e=0;
+    days.forEach(d=>{ const r=data.kpiDays[iso(d)]||{}; if(r.wake)w++; if(r.sleep)s++; if(r.ex)e++; });
+    const set=(id,cur,tgt,c,canvas)=>{
+      const pct=Math.round(Math.min(100,cur/Math.max(1,tgt)*100));
+      document.getElementById(id+'Pct').textContent=pct+'%';
+      document.getElementById(id+'Cur').textContent=cur;
+      document.getElementById(id+'Tgt').textContent=tgt;
+      donut(document.getElementById(canvas),pct,c);
+    };
+    set('wake',w,7,'#22d3ee','wakeDonut');
+    set('sleep',s,7,'#a78bfa','sleepDonut');
+    set('ex',e,7,'#34d399','exDonut');
+  }
+
+  /* ---- 週次・月次の振り返り ---- */
+  let revKind='week';
+  let revCursor=new Date(); revCursor.setHours(0,0,0,0);
+  let calPick=iso(new Date());
+  function addDays(d,n){ const x=new Date(d.getFullYear(),d.getMonth(),d.getDate()); x.setDate(x.getDate()+n); return x; }
+  function mondayOf(d){ const x=new Date(d.getFullYear(),d.getMonth(),d.getDate()); x.setDate(x.getDate()-((x.getDay()+6)%7)); return x; }
+  function monthStart(d){ return new Date(d.getFullYear(),d.getMonth(),1); }
+  function monthEnd(d){ return new Date(d.getFullYear(),d.getMonth()+1,0); }
+  function eachIso(a,b){
+    const out=[]; let x=new Date(a.getFullYear(),a.getMonth(),a.getDate());
+    const end=new Date(b.getFullYear(),b.getMonth(),b.getDate());
+    while(x<=end){ out.push(iso(x)); x=addDays(x,1); }
+    return out;
+  }
+  function kpiCount(ids){
+    let w=0,s=0,e=0;
+    ids.forEach(id=>{ const r=data.kpiDays[id]||{}; if(r.wake)w++; if(r.sleep)s++; if(r.ex)e++; });
+    return {wake:w,sleep:s,ex:e,n:ids.length};
+  }
+  function md(d){ return (d.getMonth()+1)+'/'+d.getDate(); }
+  function revRange(){
+    if(revKind==='week'){
+      const a=mondayOf(revCursor), b=addDays(a,6);
+      return {a,b,from:iso(a),to:iso(b),id:iso(a)};
+    }
+    const a=monthStart(revCursor), b=monthEnd(revCursor);
+    return {a,b,from:iso(a),to:iso(b),id:a.getFullYear()+'-'+pad(a.getMonth()+1)};
+  }
+  function prevSpan(r){
+    if(revKind==='week'){ const a=addDays(r.a,-7); return {a,b:addDays(a,6)}; }
+    const a=new Date(r.a.getFullYear(),r.a.getMonth()-1,1);
+    return {a,b:new Date(a.getFullYear(),a.getMonth()+1,0)};
+  }
+  function getRev(){
+    const r=revRange();
+    const bag=data.reviews[revKind];
+    if(!bag[r.id]) bag[r.id]={good:'',hard:'',next:'',mood:0,focus:[]};
+    const o=bag[r.id];
+    if(!Array.isArray(o.focus)) o.focus=[];
+    o.good=o.good||''; o.hard=o.hard||''; o.next=o.next||''; o.mood=Number(o.mood)||0;
+    return o;
+  }
+  function setDelta(el, now, prev, unit){
+    const d=now-prev;
+    el.className='delta '+(d>0?'up':d<0?'dn':'flat');
+    el.textContent=d===0?'前の期間と同じ':((d>0?'+':'')+d+unit+'（前期間比）');
+  }
+  function fillTa(id,val){
+    const el=document.getElementById(id);
+    if(document.activeElement===el) return;
+    if(el.value!==val) el.value=val;
+  }
+  function parseIso(id){
+    const a=String(id).split('-').map(Number);
+    return new Date(a[0], (a[1]||1)-1, a[2]||1);
+  }
+  function renderCal(){
+    const y=revCursor.getFullYear(), m=revCursor.getMonth();
+    const first=new Date(y,m,1);
+    const now=new Date();
+    const todayId=iso(now);
+    const thisMonth=now.getFullYear()===y && now.getMonth()===m;
+    document.getElementById('revLabel').innerHTML=y+'年 '+(m+1)+'月'+(thisMonth?'<small>今月</small>':'');
+    document.getElementById('revHint').textContent='日付をタップすると、その日の早起き・睡眠・運動と解決が見られます。色の点はできた項目です。';
+    if(parseIso(calPick).getMonth()!==m || parseIso(calPick).getFullYear()!==y){
+      calPick=thisMonth?todayId:iso(first);
+    }
+    const start=mondayOf(first);
+    const cells=[];
+    for(let i=0;i<42;i++){
+      const d=addDays(start,i);
+      const id=iso(d);
+      const rec=data.kpiDays[id]||{};
+      const n=sols().filter(s=>s.date===id).length;
+      cells.push({d,id,out:d.getMonth()!==m,rec,n});
+    }
+    const grid=document.getElementById('calGrid');
+    grid.innerHTML=cells.map(c=>{
+      const cls=['cell'];
+      if(c.out) cls.push('out');
+      if(c.id===todayId) cls.push('today');
+      if(c.id===calPick) cls.push('sel');
+      return '<button type="button" class="'+cls.join(' ')+'" data-id="'+c.id+'">'+
+        '<div class="n">'+c.d.getDate()+'</div>'+
+        '<div class="dots"><i class="'+(c.rec.wake?'w':'')+'"></i><i class="'+(c.rec.sleep?'s':'')+'"></i><i class="'+(c.rec.ex?'e':'')+'"></i></div>'+
+        '<div class="sn">'+(c.n?c.n+'件':'')+'</div></button>';
+    }).join('');
+    grid.querySelectorAll('[data-id]').forEach(b=>{
+      b.onclick=()=>{
+        calPick=b.dataset.id;
+        const d=parseIso(calPick);
+        if(d.getMonth()!==revCursor.getMonth()||d.getFullYear()!==revCursor.getFullYear()) revCursor=d;
+        renderCal();
+      };
+    });
+    const pick=parseIso(calPick);
+    const rec=data.kpiDays[calPick]||{};
+    document.getElementById('calDayTitle').textContent=
+      pick.getFullYear()+'年 '+(pick.getMonth()+1)+'月'+pick.getDate()+'日（'+DAYS[(pick.getDay()+6)%7]+'）';
+    document.querySelectorAll('#calTogs .tog').forEach(b=>{
+      b.classList.toggle('on', !!rec[b.dataset.t]);
+      b.onclick=()=>toggleDay(calPick, b.dataset.t);
+    });
+    const list=sols().filter(s=>s.date===calPick);
+    const box=document.getElementById('calSolves');
+    if(!list.length) box.innerHTML='<div class="empty">この日の解決記録はまだありません。</div>';
+    else box.innerHTML=list.map(s=>'<div class="item"><div class="top"><div><div class="ttl">'+esc(s.title)+'</div><div class="meta">'+esc(s.date||'')+'</div></div></div>'+
+      '<div class="tags">'+(s.phases||[]).map(p=>'<span class="tag t'+p+'">'+p+'</span>').join('')+'</div></div>').join('');
+  }
+  function renderRev(){
+    document.getElementById('subWeek').classList.toggle('on', revKind==='week');
+    document.getElementById('subMonth').classList.toggle('on', revKind==='month');
+    document.getElementById('subCal').classList.toggle('on', revKind==='cal');
+    document.getElementById('revCalPane').style.display=revKind==='cal'?'':'none';
+    document.getElementById('revStatsPane').style.display=revKind==='cal'?'none':'';
+    if(revKind==='cal'){ renderCal(); return; }
+    const r=revRange(), ids=eachIso(r.a,r.b), k=kpiCount(ids);
+    const p=prevSpan(r), pk=kpiCount(eachIso(p.a,p.b));
+    const list=sols().filter(s=>s.date>=r.from && s.date<=r.to);
+    const prevList=sols().filter(s=>s.date>=iso(p.a) && s.date<=iso(p.b));
+    const now=new Date();
+    const thisWeek=iso(mondayOf(now))===r.id;
+    const thisMonth=(now.getFullYear()+'-'+pad(now.getMonth()+1))===r.id;
+    document.getElementById('subWeek').classList.toggle('on', revKind==='week');
+    document.getElementById('subMonth').classList.toggle('on', revKind==='month');
+    if(revKind==='week'){
+      document.getElementById('revLabel').innerHTML=md(r.a)+' 〜 '+md(r.b)+(thisWeek?'<small>今週</small>':'<small>'+r.a.getFullYear()+'年</small>');
+      document.getElementById('revNextTitle').textContent='来週やること';
+      document.getElementById('revHint').textContent='今週の早起き・睡眠・運動と、解決した件数をまとめています。下に一言残すと次週に見返せます。';
+    }else{
+      document.getElementById('revLabel').innerHTML=r.a.getFullYear()+'年 '+(r.a.getMonth()+1)+'月'+(thisMonth?'<small>今月</small>':'');
+      document.getElementById('revNextTitle').textContent='来月やること';
+      document.getElementById('revHint').textContent='今月の習慣と解決をまとめています。よかったこと・課題を書いておくと、翌月のスタートが楽です。';
+    }
+    const setKpi=(key,cur,prev,color,canvas)=>{
+      const pct=Math.round(cur/Math.max(1,k.n)*100);
+      document.getElementById('rev'+key+'Pct').textContent=pct+'%';
+      document.getElementById('rev'+key+'Cur').textContent=cur;
+      document.getElementById('rev'+key+'Tgt').textContent=k.n;
+      donut(document.getElementById(canvas),pct,color);
+      setDelta(document.getElementById('rev'+key+'Delta'), cur, prev, '日');
+    };
+    setKpi('Wake',k.wake,pk.wake,'#22d3ee','revWakeDonut');
+    setKpi('Sleep',k.sleep,pk.sleep,'#a78bfa','revSleepDonut');
+    setKpi('Ex',k.ex,pk.ex,'#34d399','revExDonut');
+    const counts={'設計':0,'実装':0,'検証':0,'改善':0};
+    list.forEach(s=>(s.phases||[]).forEach(p=>{ if(counts[p]!=null) counts[p]++; }));
+    document.getElementById('revSolveN').textContent=list.length;
+    document.getElementById('revSolvePhases').textContent=PHASES.map(p=>p+' '+counts[p]).join(' / ');
+    pie(document.getElementById('revSolveDonut'),counts);
+    setDelta(document.getElementById('revSolveDelta'), list.length, prevList.length, '件');
+
+    if(revKind==='week'){
+      const items=ids.map(id=>{
+        const rec=data.kpiDays[id]||{};
+        const d=new Date(id+'T00:00:00');
+        return {k:DAYS[(d.getDay()+6)%7], n:(rec.wake?1:0)+(rec.sleep?1:0)+(rec.ex?1:0)};
+      });
+      bar(document.getElementById('revBar'), items, x=>x.n, x=>x.k, 3, '#22d3ee');
+    }else{
+      const weeks=[];
+      let cur=mondayOf(r.a);
+      if(cur<r.a) cur=addDays(cur,7);
+      // include partial first week
+      cur=mondayOf(r.a);
+      const seen={};
+      eachIso(r.a,r.b).forEach(id=>{
+        const m=iso(mondayOf(new Date(id+'T00:00:00')));
+        if(!seen[m]){ seen[m]=[]; weeks.push(m); }
+        seen[m].push(id);
+      });
+      const items=weeks.map((m,i)=>{
+        const ck=kpiCount(seen[m]);
+        const pct=Math.round((ck.wake+ck.sleep+ck.ex)/Math.max(1,ck.n*3)*100);
+        return {k:(i+1)+'週', n:pct};
+      });
+      bar(document.getElementById('revBar'), items, x=>x.n, x=>x.k, 100, '#22d3ee');
+    }
+
+    const box=document.getElementById('revSolves');
+    if(!list.length) box.innerHTML='<div class="empty">この期間の解決記録はまだありません。</div>';
+    else box.innerHTML=list.map(s=>'<div class="item"><div class="top"><div><div class="ttl">'+esc(s.title)+'</div><div class="meta">'+esc(s.date||'')+'</div></div></div>'+
+      '<div class="tags">'+(s.phases||[]).map(p=>'<span class="tag t'+p+'">'+p+'</span>').join('')+'</div></div>').join('');
+
+    const note=getRev();
+    document.querySelectorAll('#revMood [data-m]').forEach(b=>b.classList.toggle('on', Number(b.dataset.m)===note.mood));
+    document.querySelectorAll('#revFocus [data-f]').forEach(b=>b.classList.toggle('on', note.focus.includes(b.dataset.f)));
+    fillTa('revGood', note.good);
+    fillTa('revHard', note.hard);
+    fillTa('revNext', note.next);
+  }
+  document.getElementById('subWeek').onclick=()=>{ revKind='week'; renderRev(); };
+  document.getElementById('subMonth').onclick=()=>{ revKind='month'; renderRev(); };
+  document.getElementById('subCal').onclick=()=>{ revKind='cal'; renderRev(); };
+  document.getElementById('revPrev').onclick=()=>{
+    if(revKind==='week') revCursor=addDays(mondayOf(revCursor),-7);
+    else revCursor=new Date(revCursor.getFullYear(), revCursor.getMonth()-1, 1);
+    renderRev();
+  };
+  document.getElementById('revFwd').onclick=()=>{
+    if(revKind==='week') revCursor=addDays(mondayOf(revCursor),7);
+    else revCursor=new Date(revCursor.getFullYear(), revCursor.getMonth()+1, 1);
+    renderRev();
+  };
+  document.querySelectorAll('#revMood [data-m]').forEach(b=>{
+    b.onclick=()=>{ const n=getRev(); n.mood=n.mood===Number(b.dataset.m)?0:Number(b.dataset.m); save(); renderRev(); };
+  });
+  document.querySelectorAll('#revFocus [data-f]').forEach(b=>{
+    b.onclick=()=>{
+      const n=getRev(), f=b.dataset.f;
+      n.focus=n.focus.includes(f)?n.focus.filter(x=>x!==f):n.focus.concat(f);
+      save(); renderRev();
+    };
+  });
+  let revT;
+  ['revGood','revHard','revNext'].forEach(id=>{
+    document.getElementById(id).addEventListener('input',()=>{
+      const n=getRev();
+      n.good=document.getElementById('revGood').value;
+      n.hard=document.getElementById('revHard').value;
+      n.next=document.getElementById('revNext').value;
+      clearTimeout(revT); revT=setTimeout(save, 400);
+    });
+  });
+
+  /* ---- ゴール ---- */
+  function renderGoal(){
+    const list=sols();
+    document.getElementById('solveCount').textContent=list.length;
+    const counts={'設計':0,'実装':0,'検証':0,'改善':0};
+    list.forEach(s=>(s.phases||[]).forEach(p=>{ if(counts[p]!=null) counts[p]++; }));
+    const top=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
+    document.getElementById('phaseTop').textContent=top&&top[1]>0?top[0]:'-';
+    document.getElementById('phaseTotal').textContent=list.length;
+    pie(document.getElementById('phaseDonut'),counts);
+    document.getElementById('phaseLegend').innerHTML=PHASES.map(p=>'<span><i style="background:'+COL[p]+'"></i>'+p+' '+counts[p]+'</span>').join('');
+    const now=new Date(), keys=[];
+    for(let i=5;i>=0;i--){ const d=new Date(now.getFullYear(),now.getMonth()-i,1); keys.push(d.getFullYear()+'-'+pad(d.getMonth()+1)); }
+    bar(document.getElementById('solveBar'), keys.map(k=>({k,n:list.filter(s=>(s.date||'').startsWith(k)).length})), x=>x.n, x=>x.k.slice(5)+'月', 0, '#fbbf24');
+    document.querySelectorAll('#phaseChips .chip').forEach(c=>{
+      c.classList.toggle('on', picked.includes(c.dataset.p));
+    });
+    const el=document.getElementById('solveList');
+    if(!list.length){ el.innerHTML='<div class="empty">まだ記録がありません。</div>'; return; }
+    el.innerHTML=list.map(s=>'<div class="item"><div class="top"><div><div class="ttl">'+esc(s.title)+
+      '</div><div class="meta">'+esc(s.date||'')+'</div></div><button class="x" data-id="'+s.id+'">🗑</button></div>'+
+      '<div class="tags">'+(s.phases||[]).map(p=>'<span class="tag t'+p+'">'+p+'</span>').join('')+'</div></div>').join('');
+    el.querySelectorAll('.x').forEach(b=>b.onclick=()=>{
+      if(!confirm('削除しますか？')) return;
+      data.solves=data.solves.filter(x=>x.id!==b.dataset.id); save(); render();
+    });
+  }
+  document.querySelectorAll('#phaseChips .chip').forEach(c=>{
+    c.onclick=()=>{
+      const p=c.dataset.p;
+      picked = picked.includes(p) ? picked.filter(x=>x!==p) : picked.concat(p);
+      c.classList.toggle('on', picked.includes(p));
+    };
+  });
+  document.getElementById('addSolve').onclick=()=>{
+    const el=document.getElementById('solveTitle');
+    const title=el.value.trim();
+    if(!title){ alert('タイトルを入力してください'); return; }
+    data.solves.push({id:uid(), title, phases:picked.slice(), date:today()});
+    save(); el.value=''; renderGoal();
+  };
+
+  /* ---- 資産・年収 ---- */
+  function renderMoney(){
+    document.getElementById('vAsset').textContent=fmt(data.targetAsset)+' 万';
+    document.getElementById('vIncome').textContent=fmt(data.targetIncome)+' 万';
+    document.getElementById('vYear').textContent=data.targetYear+' 年';
+    const cur=thisRec();
+    document.getElementById('vNowAsset').textContent=fmt(cur.asset)+' 万';
+    document.getElementById('vNowIncome').textContent=fmt(cur.income)+' 万';
+
+    const aPct=data.targetAsset>0?cur.asset/data.targetAsset*100:0;
+    const iPct=data.targetIncome>0?cur.income/data.targetIncome*100:0;
+    document.getElementById('assetPct').textContent=Math.round(aPct)+'%';
+    document.getElementById('incomePct').textContent=Math.round(iPct)+'%';
+    document.getElementById('assetCur').textContent=fmt(cur.asset);
+    document.getElementById('incomeCur').textContent=fmt(cur.income);
+    document.getElementById('assetTgt').textContent=fmt(data.targetAsset);
+    document.getElementById('incomeTgt').textContent=fmt(data.targetIncome);
+    const aRest=data.targetAsset-cur.asset, iRest=data.targetIncome-cur.income;
+    document.getElementById('assetRest').textContent=aRest>0?'あと '+fmt(aRest)+' 万円':'🎉 達成！';
+    document.getElementById('incomeRest').textContent=iRest>0?'あと '+fmt(iRest)+' 万円':'🎉 達成！';
+    const yL=data.targetYear-Y;
+    document.getElementById('paceYears').textContent=yL>0?'あと '+yL+' 年':(yL===0?'今年が目標年':'期限超過');
+    document.getElementById('paceAsset').textContent=yL>0&&aRest>0?fmt(aRest/yL)+' 万円 / 年':(aRest<=0?'達成済み':'-');
+    donut(document.getElementById('assetDonut'),aPct,'#22d3ee');
+    donut(document.getElementById('incomeDonut'),iPct,'#a78bfa');
+    const rs=recs();
+    bar(document.getElementById('assetBar'),rs,r=>Number(r.asset)||0,r=>String(r.year),data.targetAsset,'#22d3ee');
+    bar(document.getElementById('incomeBar'),rs,r=>Number(r.income)||0,r=>String(r.year),data.targetIncome,'#a78bfa');
+  }
+  document.querySelectorAll('[data-k]').forEach(b=>{
+    b.onclick=()=>{
+      const k=b.dataset.k, d=Number(b.dataset.d);
+      if(k==='targetYear') data.targetYear=Math.max(Y,Math.min(Y+50,data.targetYear+d));
+      else data[k]=Math.max(0,(data[k]||0)+d);
+      save(); renderMoney();
+    };
+  });
+  document.querySelectorAll('[data-c]').forEach(b=>{
+    b.onclick=()=>{
+      const r=thisRec(), k=b.dataset.c, d=Number(b.dataset.d);
+      r[k]=Math.max(0,(Number(r[k])||0)+d);
+      save(); renderMoney();
+    };
+  });
+
+  let t; window.onresize=()=>{ clearTimeout(t); t=setTimeout(render,150); };
+
+  /* ---- Google SSO + 安価なクラウド（Firebase / ユーザーごとに分離） ---- */
+  const CFG_KEY='goalTracker_fbConfig';
+  const PROJECT_ID=''; // 固定したい場合のみプロジェクトIDを入れる
+  const EMBEDDED_FB=null; // 公開リポジトリには鍵を埋め込まない。cloud-config.json か設定画面を使う
+  const FB_TEMPLATE={
+    apiKey:'',
+    authDomain:'',
+    projectId:'',
+    storageBucket:'',
+    messagingSenderId:'',
+    appId:''
+  };
+  let sharedCfg=null;
+  let fbAuth=null, fbDb=null, fbUid=null, fbUnsub=null, pushing=false, applying=false, lastSync=0, cloudErr='';
+
+  function parseFbConfig(raw){
+    raw=String(raw||'').trim();
+    const m=raw.match(/\{[\s\S]*\}/);
+    if(!m) throw new Error(' { ... } の設定が見つかりません');
+    let s=m[0].replace(/\/\*[\s\S]*?\*\//g,'').replace(/\/\/.*$/gm,'');
+    s=s.replace(/'/g,'"');
+    s=s.replace(/([,{]\s*)([A-Za-z0-9_]+)\s*:/g,'$1"$2":');
+    s=s.replace(/,\s*([}\]])/g,'$1');
+    return JSON.parse(s);
+  }
+  function getCfg(){
+    if(EMBEDDED_FB && EMBEDDED_FB.apiKey) return EMBEDDED_FB;
+    if(sharedCfg && sharedCfg.apiKey) return sharedCfg;
+    try{ const r=localStorage.getItem(CFG_KEY); if(r) return JSON.parse(r); }catch(e){}
+    return null;
+  }
+  function authErr(e){
+    const code=e&&e.code;
+    const host=location.hostname;
+    if(code==='auth/unauthorized-domain'){
+      return 'このURLのドメインが未登録です。Firebase → Authentication → Settings → 承認済みドメインに「'+host+'」を追加してください（https:// は付けない）';
+    }
+    if(code==='auth/web-storage-unsupported'||code==='auth/operation-not-supported-in-this-environment'){
+      return 'このブラウザ設定ではログインできません。プライベートモードを解除し、Cookie/サイトデータを許可してください';
+    }
+    if(code==='auth/network-request-failed'){
+      return 'ネットワークエラーです。通信状態を確認してもう一度お試しください';
+    }
+    if(code==='auth/internal-error'){
+      return 'ログインに失敗しました。Firebaseの承認済みドメインに「'+host+'」があるか確認してください';
+    }
+    return ((e&&e.message)||String(e))+(code?'（'+code+'）':'');
+  }
+  function userKey(uid){ return KEY+'__'+uid; }
+  function agoText(ms){
+    const s=Math.round((Date.now()-ms)/1000);
+    if(s<60) return '今';
+    if(s<3600) return Math.floor(s/60)+'分前';
+    return Math.floor(s/3600)+'時間前';
+  }
+  function setCloudUI(){
+    const u=fbAuth && fbAuth.currentUser;
+    const name=document.getElementById('cloudName');
+    const st=document.getElementById('cloudSt');
+    const av=document.getElementById('cloudAv');
+    const btn=document.getElementById('btnLogin');
+    const sy=document.getElementById('btnSync');
+    if(u){
+      name.textContent=u.displayName||u.email||'ログイン中';
+      st.textContent=cloudErr?('同期エラー: '+cloudErr): pushing?'同期中…': lastSync?('クラウド同期済み・'+agoText(lastSync)+'（このアカウント専用）'):'クラウドと同期中（このアカウント専用）';
+      if(u.photoURL) av.src=u.photoURL; else av.removeAttribute('src');
+      btn.textContent='ログアウト';
+      if(sy) sy.style.display='';
+    }else{
+      name.textContent='未ログイン';
+      st.textContent=cloudErr?('エラー: '+cloudErr): getCfg()?'Googleでログイン（誰でも可・データはアカウントごと）':'この端末のみ（設定でクラウド化すると他の人もログイン可）';
+      av.removeAttribute('src');
+      btn.textContent='Googleでログイン';
+      if(sy) sy.style.display='none';
+    }
+  }
+  function loadScript(src){
+    return new Promise((res,rej)=>{
+      if([...document.scripts].some(s=>s.src===src)){ res(); return; }
+      const s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=rej; document.head.appendChild(s);
+    });
+  }
+  async function ensureFb(){
+    const cfg=getCfg();
+    if(!cfg||!cfg.apiKey||!cfg.projectId) throw new Error('クラウド設定がありません');
+    if(window.firebase && firebase.apps && firebase.apps.length){
+      fbAuth=firebase.auth(); fbDb=firebase.firestore(); return;
+    }
+    await loadScript('https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js');
+    await loadScript('https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js');
+    await loadScript('https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js');
+    if(!firebase.apps.length) firebase.initializeApp(cfg);
+    fbAuth=firebase.auth();
+    fbDb=firebase.firestore();
+    try{ fbDb.enableIndexedDbPersistence({synchronizeTabs:true}); }catch(e){}
+  }
+  function payload(){
+    return JSON.parse(JSON.stringify({
+      targetAsset:data.targetAsset, targetIncome:data.targetIncome, targetYear:data.targetYear,
+      records:data.records, solves:data.solves, kpiGoals:data.kpiGoals, kpiDays:data.kpiDays,
+      reviews:data.reviews, updatedAt:data.updatedAt||Date.now()
+    }));
+  }
+  function cacheUser(){
+    if(!fbUid) return;
+    localStorage.setItem(userKey(fbUid), JSON.stringify(data));
+  }
+  let syncTimer=null;
+  function pushCloud(){
+    if(!fbUid||!fbDb||applying) return;
+    clearTimeout(syncTimer);
+    syncTimer=setTimeout(doPush, 800);
+  }
+  async function doPush(){
+    if(!fbUid||!fbDb||applying) return;
+    pushing=true; cloudErr=''; setCloudUI();
+    try{
+      await fbDb.collection('users').doc(fbUid).set(payload());
+      lastSync=Date.now();
+      cacheUser();
+    }catch(e){
+      cloudErr=e.message||String(e);
+    }
+    pushing=false; setCloudUI();
+  }
+  function listenCloud(){
+    if(fbUnsub){ fbUnsub(); fbUnsub=null; }
+    if(!fbUid||!fbDb) return;
+    fbUnsub=fbDb.collection('users').doc(fbUid).onSnapshot(snap=>{
+      if(!snap.exists){ doPush(); return; }
+      const c=snap.data()||{};
+      const far=Number(c.updatedAt)||0;
+      const loc=Number(data.updatedAt)||0;
+      if(far<=loc) return;
+      applying=true;
+      data=fill(c);
+      cacheUser();
+      applying=false;
+      lastSync=Date.now();
+      render();
+      setCloudUI();
+    }, err=>{ cloudErr=err.message; setCloudUI(); });
+  }
+  async function afterLogin(u){
+    const prev=fbUid;
+    fbUid=u.uid;
+    cloudErr='';
+    setCloudUI();
+    const ref=fbDb.collection('users').doc(u.uid);
+    const snap=await ref.get();
+    let cached=null;
+    try{ cached=JSON.parse(localStorage.getItem(userKey(u.uid))||'null'); }catch(e){}
+    if(snap.exists){
+      applying=true; data=fill(snap.data()||{}); applying=false;
+    }else if(cached){
+      applying=true; data=fill(cached); applying=false;
+      await doPush();
+    }else if(!prev){
+      // ゲスト状態からの初回ログイン → この端末のデータをこのアカウントへ移行
+      await doPush();
+    }else{
+      // 別アカウントへ切り替え → 他人のデータを引き継がない
+      applying=true; data=fill({}); applying=false;
+      await doPush();
+    }
+    cacheUser();
+    lastSync=Date.now();
+    render();
+    listenCloud();
+    setCloudUI();
+  }
+  function googleProvider(){
+    const p=new firebase.auth.GoogleAuthProvider();
+    p.setCustomParameters({prompt:'select_account'});
+    return p;
+  }
+  const REDIR_KEY='goalTracker_redirecting';
+  async function login(){
+    if(!getCfg()){ openSetup(); return; }
+    cloudErr='';
+    try{
+      await ensureFb();
+    }catch(e){ cloudErr=authErr(e); setCloudUI(); return; }
+    // スマホはリダイレクトが別ドメイン経由でブロックされやすいので、まずポップアップを試す
+    try{
+      await fbAuth.signInWithPopup(googleProvider());
+      return;
+    }catch(e){
+      const fallback=['auth/popup-blocked','auth/popup-closed-by-user','auth/cancelled-popup-request',
+        'auth/operation-not-supported-in-this-environment','auth/web-storage-unsupported'].includes(e.code);
+      if(!fallback){ cloudErr=authErr(e); setCloudUI(); return; }
+      if(e.code==='auth/popup-closed-by-user'){ setCloudUI(); return; }
+    }
+    try{
+      sessionStorage.setItem(REDIR_KEY,'1');
+      await fbAuth.signInWithRedirect(googleProvider());
+    }catch(e2){
+      sessionStorage.removeItem(REDIR_KEY);
+      cloudErr=authErr(e2);
+      setCloudUI();
+    }
+  }
+  async function logout(){
+    if(fbUnsub){ fbUnsub(); fbUnsub=null; }
+    cacheUser();
+    fbUid=null; lastSync=0; cloudErr='';
+    if(fbAuth) await fbAuth.signOut();
+    data=load();
+    render();
+    setCloudUI();
+  }
+  function openSetup(){
+    const cfg=getCfg();
+    const shown=Object.assign({}, FB_TEMPLATE, cfg||{});
+    document.getElementById('fbConfigText').value=JSON.stringify(shown,null,2);
+    document.getElementById('originNow').textContent=location.origin;
+    document.getElementById('originHost').textContent=location.hostname;
+    document.getElementById('setupModal').classList.add('show');
+  }
+  async function publishCfg(obj){
+    localStorage.setItem(CFG_KEY, JSON.stringify(obj));
+    sharedCfg=obj;
+    try{
+      const res=await fetch('/cloud-config.json', {
+        method:'PUT',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(obj)
+      });
+      if(!res.ok) throw new Error('status '+res.status);
+    }catch(e){
+      console.warn('共有設定の書き込みはスキップ（この端末には保存済み）', e);
+    }
+  }
+  async function loadSharedCfg(){
+    try{
+      const r=await fetch('/cloud-config.json', {cache:'no-store'});
+      if(!r.ok) return;
+      const j=await r.json();
+      if(j && j.apiKey && j.projectId){
+        sharedCfg=j;
+        localStorage.setItem(CFG_KEY, JSON.stringify(j));
+      }
+    }catch(e){}
+  }
+  async function bootCloud(){
+    await loadSharedCfg();
+    setCloudUI();
+    if(!getCfg()) return;
+    try{
+      await ensureFb();
+      const wasRedirect=sessionStorage.getItem(REDIR_KEY)==='1';
+      sessionStorage.removeItem(REDIR_KEY);
+      try{
+        const res=await fbAuth.getRedirectResult();
+        if(wasRedirect && !(res && res.user) && !fbAuth.currentUser){
+          cloudErr='ログインが完了しませんでした。ブラウザのプライベートモードや、Cookie/サイトデータのブロックを解除してからやり直してください';
+        }
+      }catch(e){ cloudErr=authErr(e); }
+      fbAuth.onAuthStateChanged(u=>{
+        if(u) afterLogin(u);
+        else{
+          fbUid=null;
+          if(fbUnsub){ fbUnsub(); fbUnsub=null; }
+          setCloudUI();
+        }
+      });
+    }catch(e){
+      cloudErr=e.message;
+      setCloudUI();
+    }
+  }
+
+  document.getElementById('btnSetup').onclick=openSetup;
+  document.getElementById('btnCloseSetup').onclick=()=>document.getElementById('setupModal').classList.remove('show');
+  document.getElementById('setupModal').onclick=e=>{ if(e.target.id==='setupModal') e.currentTarget.classList.remove('show'); };
+  document.getElementById('btnSaveCfg').onclick=async ()=>{
+    const raw=document.getElementById('fbConfigText').value.trim();
+    try{
+      const obj=Object.assign({}, FB_TEMPLATE, parseFbConfig(raw));
+      if(PROJECT_ID && obj.projectId!==PROJECT_ID) throw new Error('projectId は '+PROJECT_ID+' にしてください');
+      if(!obj.apiKey||!obj.projectId||!obj.appId) throw new Error('apiKey / projectId / appId を貼ってください');
+      await publishCfg(obj);
+      document.getElementById('setupModal').classList.remove('show');
+      location.reload();
+    }catch(e){ alert('設定が読めません: '+e.message); }
+  };
+  document.getElementById('btnLogin').onclick=()=>{
+    if(fbAuth&&fbAuth.currentUser) logout();
+    else login();
+  };
+  document.getElementById('btnSync').onclick=()=>doPush();
+
+  bootCloud();
+  show(tab);
+})();
+</script>
+</body>
+</html>

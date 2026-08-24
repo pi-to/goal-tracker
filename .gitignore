@@ -1,0 +1,13 @@
+# 秘密情報・個人のクラウド設定
+cloud-config.json
+.firebaserc
+.firebase/
+public/index.html
+
+# 依存関係とログ
+node_modules/
+__pycache__/
+*.pyc
+*.log
+.DS_Store
+.python-version
