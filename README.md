@@ -1,5 +1,9 @@
 # 目標トラッカー
 
+**アプリをブラウザで見るURL（こちらを開く）:** [https://pi-to.github.io/goal-tracker/](https://pi-to.github.io/goal-tracker/)
+
+[github.com/pi-to/goal-tracker](https://github.com/pi-to/goal-tracker) はソースコードの置き場です。リポジトリを開いても画面は動きません。
+
 個人のゴール（平凡 → PL）、資産・年収、習慣KPI、週次・月次の振り返り、カレンダーを1ファイルの Web アプリで記録します。
 
 データは端末の `localStorage` に保存し、任意で **Google ログイン + Firestore** に同期します。ユーザーごとに文書が分かれるため、複数人が同じアプリを使っても他人のデータは見えません。
@@ -55,6 +59,15 @@ python3 serve.py
 8. `python3 serve.py` を再起動し、ページを再読み込みして「Googleでログイン」する。
 
 アプリ内の「設定」に `firebaseConfig` を貼っても同じです。
+
+## GitHub Pages（このリポジトリから公開）
+
+Settings → Pages で `main` ブランチの `/` を公開済みです。初回は数分かかることがあります。
+
+- トップ: https://pi-to.github.io/goal-tracker/
+- 本体: https://pi-to.github.io/goal-tracker/goal_tracker.html
+
+Google ログインを使う場合は、Firebase の Authorized domains に `pi-to.github.io` を追加してください。
 
 ## Firebase Hosting への公開（固定URL）
 
