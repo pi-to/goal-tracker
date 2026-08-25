@@ -71,6 +71,8 @@ Google ログインを使う場合は、Firebase の Authorized domains に `pi-
 
 ## Firebase Hosting への公開（固定URL）
 
+GitHub Pages（上の `github.io` URL）ですでにアプリは公開されています。Hosting は任意です。
+
 ```bash
 cp .firebaserc.example .firebaserc   # default を自分のプロジェクトIDに変更
 export FIREBASE_PROJECT=YOUR_PROJECT_ID
@@ -79,6 +81,33 @@ npx firebase-tools login
 ```
 
 公開URLは `https://YOUR_PROJECT_ID.web.app` です。トンネルは使いません。
+
+### ヘッドレス環境（ブラウザが開かないとき）
+
+`firebase login --no-localhost` を使う。画面に **2種類の値** が出る。
+
+| 項目 | 例 | 貼る場所 |
+|---|---|---|
+| session ID | `62ABD`（短い英数字） | 貼らない。ブラウザ側の照合用 |
+| authorization code | `4/0A...` のような長い文字列 | CLI の `Enter authorization code` に貼る |
+
+手順:
+
+1. `npx firebase-tools logout`（以前の失敗が残っている場合）
+2. `npx firebase-tools login --no-localhost`
+3. 表示された **URL全体** を別端末のブラウザで開く（session ID だけを開くのではない）
+4. Google で許可したあと、ページに出る **長い認可コード** をコピーする
+5. ターミナルの `Enter authorization code` にその長いコードを貼る
+
+`session ID`（例: `62ABD`）を認可コード欄に貼ると `Unable to authenticate using the provided code` になる。
+
+それでも失敗する場合:
+
+- `npx firebase-tools login --no-localhost --debug` で `Premature close` が出ていないか確認する
+- Node.js 22 系（例: 22.16）でやり直す。24.17 以降はトークン交換が壊れることがある
+- ブラウザがある PC で `npx firebase-tools login:ci` を実行し、表示されたトークンを **チャットに貼らず** 自分の環境だけに `export FIREBASE_TOKEN=...` してから `./deploy.sh`
+
+認可コードも `FIREBASE_TOKEN` も他人に送らない。
 
 ## ディレクトリ
 
