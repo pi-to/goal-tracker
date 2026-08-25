@@ -82,6 +82,13 @@ npx firebase-tools login
 
 公開URLは `https://YOUR_PROJECT_ID.web.app` です。トンネルは使いません。
 
+`deploy.sh` は `cloud-config.json` があれば `public/cloud-config.json` として一緒に公開します。アプリはこれを読んで Google ログインを出すため、無いと公開先で「この端末のみ」表示になります。`public/` はコミットしません。
+
+Hosting で「Googleでログイン」が出ない、または `auth/unauthorized-domain` になるときは、Authentication → Settings → Authorized domains に次を追加してください。
+
+- `YOUR_PROJECT_ID.web.app`
+- `YOUR_PROJECT_ID.firebaseapp.com`
+
 ### ヘッドレス環境（ブラウザが開かないとき）
 
 `firebase login --no-localhost` を使う。画面に **2種類の値** が出る。
